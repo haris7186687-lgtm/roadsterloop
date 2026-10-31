@@ -180,7 +180,7 @@ function step(dt){
   const p=pose(Math.min(run.s,PL));run.x=p.x-Math.sin(p.psi)*CH;run.y=p.y+Math.cos(p.psi)*CH;run.th=p.psi;
   if(run.s>=PL){state='air';run.vx=run.v*Math.cos(p.psi);run.vy=run.v*Math.sin(p.psi);run.om=0;launchRings();show('Right arrow: level the car. Hold Space on the way down to brake.',3000)}}
  else if(state==='air'){run.t+=dt;run.air+=dt;
-  const rot=(keys.l?1:0)-(keys.r?1:0);run.om+=rot*12*dt;run.om*=Math.exp(-1.4*dt);run.th+=run.om*dt;
+  const rot=(keys.l?1:0)-(keys.r?1:0);run.om+=rot*14*dt;run.om*=Math.exp(-4*dt);run.th+=run.om*dt;
   let ax=0,ay=-G;run.thr=false;
   if(keys.sp&&run.armed&&run.gas>0){run.thr=true;run.gas=Math.max(0,run.gas-.28*dt);ax+=-Math.sin(run.th)*26;ay+=Math.cos(run.th)*26}
   run.vx+=ax*dt;run.vy+=ay*dt;run.x+=run.vx*dt;run.y+=run.vy*dt;run.maxAlt=Math.max(run.maxAlt,run.y-CH);
@@ -220,8 +220,8 @@ function sync(d){car.position.set(run.x,run.y,0);car.rotation.z=run.th;
 function hud(){const sp=state==='air'?Math.hypot(run.vx,run.vy):run.v;
  $('hSpeed').textContent=Math.round(sp/MPH);$('hAlt').textContent=Math.max(0,run.y-CH).toFixed(0);$('hGas').style.width=run.gas*100+'%';
  $('hScore').textContent=score();
- const L=$('land');if(state==='air'){const sk=Math.max(0,-run.vy),tl=Math.abs(wrap(run.th))*180/Math.PI;L.classList.remove('hidden');
- L.innerHTML=`<span class="${sk<=39?'ok':'bad'}">Sink ${sk.toFixed(0)} / 39 ft/s</span><span class="${tl<=28?'ok':'bad'}">Tilt ${tl.toFixed(0)}&deg; / 28&deg;</span>`}else L.classList.add('hidden');$('hBest').textContent=best;$('hState').textContent=state}
+ const L=$('land');if(state==='air'){const sk=Math.max(0,-run.vy),sg=wrap(run.th)*180/Math.PI,tl=Math.abs(sg),ar=sg>3?' &#9654;':sg<-3?' &#9664;':' &#10003;';L.classList.remove('hidden');
+ L.innerHTML=`<span class="${sk<=39?'ok':'bad'}">Sink ${sk.toFixed(0)} / 39 ft/s</span><span class="${tl<=28?'ok':'bad'}">Tilt ${tl.toFixed(0)}&deg; / 28&deg;${ar}</span>`}else L.classList.add('hidden');$('hBest').textContent=best;$('hState').textContent=state}
 let last=performance.now(),acc=0;
 function frame(t){const d=Math.min(.1,(t-last)/1000);last=t;acc+=d;while(acc>=DT){step(DT);acc-=DT}
  sync(d);updateCam(d);hud();renderer.render(scene,camera);requestAnimationFrame(frame)}
