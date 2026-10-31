@@ -38,6 +38,7 @@ dd{text-align:right;color:#9fe}
 @media (pointer:coarse){#touch{display:flex}}
 footer{position:fixed;bottom:max(6px,env(safe-area-inset-bottom));width:100%;text-align:center;font-size:11px;opacity:.7}
 footer a{color:#8cf}
+#land{position:fixed;top:76px;left:0;right:0;display:flex;justify-content:center;gap:10px;pointer-events:none;font-weight:700;font-size:14px}#land span{background:rgba(6,12,30,.75);border-radius:8px;padding:5px 10px}.ok{color:#2dff7a}.bad{color:#ff5a6a}
 
 #priv p{text-align:left;font-size:14px}</style>
 </head>
@@ -51,6 +52,7 @@ footer a{color:#8cf}
 </div>
 <div id="lights" class="hidden"><i></i><i></i><i></i><i></i></div>
 <div id="msg"></div>
+<div id="land" class="hidden"></div>
 <section id="title" class="panel">
   <h1>Roadster Loop</h1>
   <p>Launch on green, climb the ramp, and fly the loop. Land upright and soft.</p>
@@ -71,7 +73,7 @@ footer a{color:#8cf}
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-const G=32.2,DT=1/120,MPH=0.5,CH=0.7,R1=22,WALL=14,R2=9,A2=22*Math.PI/180,SX=-90,W=7,TAU=Math.PI*2;
+const G=19.3,GE=32.2,DT=1/120,MPH=0.4,CH=0.7,R1=22,WALL=14,R2=9,A2=22*Math.PI/180,SX=-90,W=7,TAU=Math.PI*2;
 let state='title',best=0;
 try{best=+localStorage.getItem('roadsterLoopBest')||0}catch(e){}
 const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:true});
@@ -146,10 +148,10 @@ let ac;function beep(f,d,ty,v){try{ac=ac||new(window.AudioContext||window.webkit
 function show(t,ms){const m=$('msg');m.textContent=t;m.classList.add('show');clearTimeout(msgT);msgT=setTimeout(()=>m.classList.remove('show'),ms||1000)}
 const wrap=a=>{a=((a+Math.PI)%TAU+TAU)%TAU-Math.PI;return a};
 function reset(){rings.forEach(r=>scene.remove(r.m));rings=[];parts.forEach(p=>scene.remove(p.m));parts=[];car.visible=true;shake=0;
-run={x:SX,y:CH,vx:0,vy:0,th:0,om:0,s:0,v:0,vT:0,a:0,react:0,mph:0,gas:1,rings:0,flips:0,maxAlt:0,air:0,peakG:1,sink:0,bonus:0,inv:false,thr:false,crashed:false,t:0};
+run={x:SX,y:CH,vx:0,vy:0,th:0,om:0,s:0,v:0,vT:0,a:0,react:0,mph:0,gas:1,rings:0,flips:0,maxAlt:0,air:0,peakG:1,sink:0,bonus:0,inv:false,thr:false,crashed:false,armed:false,t:0};
 cnt={t:0,lit:0,goT:null,green:false,gT:0,lock:0};lamps.forEach(l=>l.className='')}
 function startCount(){$('title').classList.add('hidden');$('results').classList.add('hidden');reset();state='count';$('lights').classList.remove('hidden')}
-function launch(r){run.react=r;run.mph=Math.min(90,Math.max(76,90-5*r));run.vT=run.mph*MPH;run.a=run.vT*run.vT/(2*-SX);state='drive';show('GO!',700);beep(880,.25,'sine');setTimeout(()=>$('lights').classList.add('hidden'),900)}
+function launch(r){run.armed=false;run.react=r;run.mph=Math.min(90,Math.max(76,90-5*r));run.vT=run.mph*MPH;run.a=run.vT*run.vT/(2*-SX);state='drive';show('GO!',700);beep(880,.25,'sine');setTimeout(()=>$('lights').classList.add('hidden'),900)}
 function action(){if(state==='title')startCount();else if(state==='count'){if(cnt.lock>0)return;
 if(!cnt.green){cnt.lock=.4;beep(140,.25,'sawtooth',.1);show('Too early, wait for green',1100)}else launch(cnt.gT)}
 else if(state==='results'&&performance.now()-run.doneAt>600)startCount()}
@@ -166,6 +168,7 @@ addP(new THREE.SphereGeometry(1,16,12),new THREE.MeshBasicMaterial({color:0xff7a
 function minY(){const c=Math.cos(run.th),s=Math.sin(run.th);let m=1e9;for(const p of COR)m=Math.min(m,run.y+p[0]*s+p[1]*c);return m}
 const score=()=>run.rings*500+run.flips*1500+Math.round(run.maxAlt*10)+Math.round(run.air*150)+run.bonus;
 function step(dt){
+ if(!keys.sp)run.armed=true;
  if(cnt.lock>0)cnt.lock-=dt;
  if(state==='count'){cnt.t+=dt;
   if(cnt.lit<4&&cnt.t>=.6+cnt.lit*.7){lamps[cnt.lit].className='on';cnt.lit++;beep(440,.12)}
@@ -173,13 +176,13 @@ function step(dt){
    if(cnt.t>=cnt.goT){cnt.green=true;lamps[3].className='green';beep(1100,.2,'sine')}}
   if(cnt.green){cnt.gT+=dt;if(cnt.gT>=3)launch(3)}}
  else if(state==='drive'){run.v=Math.min(run.vT,run.v+run.a*dt);run.vx=run.v;run.x+=run.v*dt;if(run.x>=0){state='ramp';run.s=0}}
- else if(state==='ramp'){run.s+=run.v*dt;const k=run.s<PIPE?1/R1:run.s>PIPE+WALL?1/R2:0;run.peakG=Math.max(run.peakG,1+run.v*run.v*k/G);
+ else if(state==='ramp'){run.s+=run.v*dt;const k=run.s<PIPE?1/R1:run.s>PIPE+WALL?1/R2:0;run.peakG=Math.max(run.peakG,1+run.v*run.v*k/GE);
   const p=pose(Math.min(run.s,PL));run.x=p.x-Math.sin(p.psi)*CH;run.y=p.y+Math.cos(p.psi)*CH;run.th=p.psi;
-  if(run.s>=PL){state='air';run.vx=run.v*Math.cos(p.psi);run.vy=run.v*Math.sin(p.psi);run.om=0;launchRings();show('Space: thrusters',1200)}}
+  if(run.s>=PL){state='air';run.vx=run.v*Math.cos(p.psi);run.vy=run.v*Math.sin(p.psi);run.om=0;launchRings();show('Right arrow: level the car. Hold Space on the way down to brake.',3000)}}
  else if(state==='air'){run.t+=dt;run.air+=dt;
   const rot=(keys.l?1:0)-(keys.r?1:0);run.om+=rot*12*dt;run.om*=Math.exp(-1.4*dt);run.th+=run.om*dt;
   let ax=0,ay=-G;run.thr=false;
-  if(keys.sp&&run.gas>0){run.thr=true;run.gas=Math.max(0,run.gas-.28*dt);ax+=-Math.sin(run.th)*26;ay+=Math.cos(run.th)*26}
+  if(keys.sp&&run.armed&&run.gas>0){run.thr=true;run.gas=Math.max(0,run.gas-.28*dt);ax+=-Math.sin(run.th)*26;ay+=Math.cos(run.th)*26}
   run.vx+=ax*dt;run.vy+=ay*dt;run.x+=run.vx*dt;run.y+=run.vy*dt;run.maxAlt=Math.max(run.maxAlt,run.y-CH);
   const up=Math.cos(run.th);
   if(up<-.7&&!run.inv){run.inv=true;run.flips++;show('FLIP x'+run.flips,700)}else if(up>.7)run.inv=false;
@@ -216,7 +219,9 @@ function sync(d){car.position.set(run.x,run.y,0);car.rotation.z=run.th;
  const pul=1+Math.sin(performance.now()/180)*.06;rings.forEach(r=>r.m.scale.setScalar(pul))}
 function hud(){const sp=state==='air'?Math.hypot(run.vx,run.vy):run.v;
  $('hSpeed').textContent=Math.round(sp/MPH);$('hAlt').textContent=Math.max(0,run.y-CH).toFixed(0);$('hGas').style.width=run.gas*100+'%';
- $('hScore').textContent=score();$('hBest').textContent=best;$('hState').textContent=state}
+ $('hScore').textContent=score();
+ const L=$('land');if(state==='air'){const sk=Math.max(0,-run.vy),tl=Math.abs(wrap(run.th))*180/Math.PI;L.classList.remove('hidden');
+ L.innerHTML=`<span class="${sk<=39?'ok':'bad'}">Sink ${sk.toFixed(0)} / 39 ft/s</span><span class="${tl<=28?'ok':'bad'}">Tilt ${tl.toFixed(0)}&deg; / 28&deg;</span>`}else L.classList.add('hidden');$('hBest').textContent=best;$('hState').textContent=state}
 let last=performance.now(),acc=0;
 function frame(t){const d=Math.min(.1,(t-last)/1000);last=t;acc+=d;while(acc>=DT){step(DT);acc-=DT}
  sync(d);updateCam(d);hud();renderer.render(scene,camera);requestAnimationFrame(frame)}
