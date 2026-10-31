@@ -73,7 +73,7 @@ footer a{color:#8cf}
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-const G=19.3,GE=32.2,DT=1/120,MPH=0.4,CH=0.7,R1=22,WALL=14,R2=9,A2=22*Math.PI/180,SX=-90,W=7,TAU=Math.PI*2;
+const SINK_MAX=55,TILT_MAX=40,G=19.3,GE=32.2,DT=1/120,MPH=0.4,CH=0.7,R1=22,WALL=14,R2=9,A2=22*Math.PI/180,SX=-90,W=7,TAU=Math.PI*2;
 let state='title',best=0;
 try{best=+localStorage.getItem('roadsterLoopBest')||0}catch(e){}
 const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:true});
@@ -188,7 +188,7 @@ function step(dt){
   if(up<-.7&&!run.inv){run.inv=true;run.flips++;show('FLIP x'+run.flips,700)}else if(up>.7)run.inv=false;
   for(const r of rings)if(!r.got&&Math.hypot(run.x-r.x,run.y-r.y)<3.2){r.got=true;r.m.visible=false;run.rings++;run.gas=Math.min(1,run.gas+.35);beep(1200,.12,'sine');show('+500',500)}
   if(minY()<=0&&run.vy<0){run.thr=false;run.sink=-run.vy;const tilt=Math.abs(wrap(run.th))*180/Math.PI;
-   if(run.sink<=39&&tilt<=28){state='landed';run.t=0;run.bonus=Math.round(500+(39-run.sink)/39*1500);show('Clean landing! +'+run.bonus,1500);beep(300,.2,'sine')}
+   if(run.sink<=SINK_MAX&&tilt<=TILT_MAX){state='landed';run.t=0;run.bonus=Math.round(500+(SINK_MAX-run.sink)/SINK_MAX*1500);show('Clean landing! +'+run.bonus,1500);beep(300,.2,'sine')}
    else{state='crashed';run.crashed=true;run.t=0;explode()}}}
  else if(state==='landed'){run.t+=dt;run.th+=(run.th-wrap(run.th)-run.th)*Math.min(1,10*dt);run.y+=(CH-run.y)*Math.min(1,10*dt);
   run.vx-=Math.sign(run.vx)*Math.min(Math.abs(run.vx),30*dt);run.x+=run.vx*dt;if(run.t>2)finish()}
@@ -221,7 +221,7 @@ function hud(){const sp=state==='air'?Math.hypot(run.vx,run.vy):run.v;
  $('hSpeed').textContent=Math.round(sp/MPH);$('hAlt').textContent=Math.max(0,run.y-CH).toFixed(0);$('hGas').style.width=run.gas*100+'%';
  $('hScore').textContent=score();
  const L=$('land');if(state==='air'){const sk=Math.max(0,-run.vy),sg=wrap(run.th)*180/Math.PI,tl=Math.abs(sg),ar=sg>3?' &#9654;':sg<-3?' &#9664;':' &#10003;';L.classList.remove('hidden');
- L.innerHTML=`<span class="${sk<=39?'ok':'bad'}">Sink ${sk.toFixed(0)} / 39 ft/s</span><span class="${tl<=28?'ok':'bad'}">Tilt ${tl.toFixed(0)}&deg; / 28&deg;${ar}</span>`}else L.classList.add('hidden');$('hBest').textContent=best;$('hState').textContent=state}
+ L.innerHTML=`<span class="${sk<=SINK_MAX?'ok':'bad'}">Sink ${sk.toFixed(0)} / ${SINK_MAX} ft/s</span><span class="${tl<=TILT_MAX?'ok':'bad'}">Tilt ${tl.toFixed(0)}&deg; / ${TILT_MAX}&deg;${ar}</span>`}else L.classList.add('hidden');$('hBest').textContent=best;$('hState').textContent=state}
 let last=performance.now(),acc=0;
 function frame(t){const d=Math.min(.1,(t-last)/1000);last=t;acc+=d;while(acc>=DT){step(DT);acc-=DT}
  sync(d);updateCam(d);hud();renderer.render(scene,camera);requestAnimationFrame(frame)}
